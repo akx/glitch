@@ -1,0 +1,213 @@
+lerp = (a, b, alpha=0.5) -> b * alpha + a * (1 - alpha)
+lerper-cache = {}
+lerper = (alpha) ->
+	if alpha >= 1 then return (a, b) -> b
+	if alpha <= 0 then return (a, b) -> a
+	else
+		key = 0 | (alpha * 100)
+		if lerper-cache[key] then return that
+		beta = 1 - alpha
+		return lerper-cache[key] = new Function("a", "b", "return b * #alpha + a * #beta")
+
+zwrap = (num, max) ->
+	num += max while num < 0
+	return num % max
+randint = (min, max) -> 0|(Math.random! * (max - min) + min)
+birandint = (min, max) -> 0|(Math.random! * (max - min) + min) * (if Math.random! <= 0.5 then -1 else +1)
+rand = (min, max) -> (Math.random! * (max - min) + min)
+
+make-scangrad = (context, height, brightness=0.1) ->
+	grad = context.create-linear-gradient(0, 0, 0, height)
+		&height = height
+		&add-color-stop 0, "rgba(255, 255, 255, 0)"
+		&add-color-stop 0.5, "rgba(255, 255, 255, #brightness)"
+		&add-color-stop 1, "rgba(255, 255, 255, 0)"
+	return grad
+
+
+
+scanlines = !({data, width, height}, multiplier = 0.7) ->
+	return if multiplier >= 1
+	for y from 0 til height by 2
+		for x from 0 til width
+			offset = y * width * 4 + x * 4
+			data[offset++] *= multiplier
+			data[offset++] *= multiplier
+			data[offset++] *= multiplier
+
+leak = !({data, width, height}, multiplier = 0.5, magic1 = 0, magic2 = 0) ->
+	return if multiplier <= 0
+	lerp = lerper multiplier
+	m = width * 4
+	len = data.length
+	for y from 0 til height
+		yy = y * m + magic1
+		for offset from yy til yy + m by 4
+			src = offset + 4 + magic2
+			if src >= 0 and offset < data.length then data[offset] = lerp data[offset], data[offset+4+magic2]
+
+sliceoffset = !({data, width, height}, y0, y1, offset, chanmask=2b111, blend=0.2, drift=0) ->
+	return if not chanmask
+	lerp = lerper blend
+	if offset > 0 then
+		x0 = 0
+		x1 = width
+		dir = +1
+	else
+		x0 = width - 1
+		x1 = 0
+		dir = -1
+
+	for y from y0 til y1
+		yoff = y * width * 4
+		offset += drift
+		for x from x0 til x1 by dir
+			dst-offset = yoff + x * 4
+			src-offset = yoff + zwrap(x + offset, width) * 4
+			if chanmask & 1 then data[dst-offset] = lerp data[dst-offset], data[src-offset]
+			if chanmask & 2 then data[dst-offset+1] = lerp data[dst-offset+1], data[src-offset+1]
+			if chanmask & 4 then data[dst-offset+2] = lerp data[dst-offset+2], data[src-offset+2]
+
+sliceglitch = !(data, shmin, shmax, offmin, offmax, chanmask, blend) ->
+	sh = randint shmin, shmax
+	y0 = randint 0, data.height - sh
+	sliceoffset data, y0, y0 + sh, birandint(offmin, offmax), chanmask, blend
+
+add-scangrad = !(context, scangrad, time) ->
+	{width, height} = context.canvas
+	context.save!
+	context.translate 0, -scangrad.height + time % (height + scangrad.height * 2)
+	context.fill-style = scangrad
+	context.fill-rect 0, 0, width, scangrad.height
+	context.restore!
+
+bloom = !(context, radius, strength, counter) ->
+	return if strength <= 0 or radius <= 0
+	{width, height} = context.canvas
+	data = context.get-image-data 0, 0, width, height
+	blur-data = context.get-image-data 0, 0, width, height
+	stackBlurImageData blur-data, 0, 0, width, height, radius
+	data-blend blur-data, data, strength, counter, "screen"
+	context.put-image-data data, 0, 0
+
+let
+	settings =
+		leaks:
+			n-min: 3
+			n-max: 7
+			strength: 0
+			magic1: 0
+			magic2: 0
+
+		sliceglitch:
+			probability: 0
+			n-min: 5
+			n-max: 5
+			rand-chan: true
+			chan-r: true
+			chan-g: true
+			chan-b: true
+			h-min: 5
+			h-max: 23
+			off-min: 1
+			off-max: 25
+			drift-prob: 20
+			drift-mag: 2
+
+		bloom:
+			radius: 0
+			strength: 0.5
+			counter: 0.5
+
+		scanlines:
+			enabled: false
+			brightness: 0.8
+
+		tvscan:
+			height: 300
+			brightness: 0.0
+			speed: 0.3
+
+
+
+	draw = !->
+		t0 = +new Date
+		context.draw-image image, 0, 0, width, height
+		data = context.get-image-data 0, 0, width, height
+
+		for x from 0 til randint(settings.leaks.n-min, settings.leaks.n-max)
+			leak data, settings.leaks.strength, settings.leaks.magic1, settings.leaks.magic2
+
+
+		if randint(0, 100) < settings.sliceglitch.probability then
+
+			for x from 0 til randint(settings.sliceglitch.n-min, settings.sliceglitch.n-max)
+				chanmask = 0
+				if not settings.sliceglitch.rand-chan or randint(0, 100) < 33 then chanmask |= (+settings.sliceglitch.chan-r)
+				if not settings.sliceglitch.rand-chan or randint(0, 100) < 33 then chanmask |= (+settings.sliceglitch.chan-g) << 1
+				if not settings.sliceglitch.rand-chan or randint(0, 100) < 33 then chanmask |= (+settings.sliceglitch.chan-b) << 2
+				drift = (if randint(0, 100) < settings.sliceglitch.drift-prob then settings.sliceglitch.drift-mag else 0)
+
+				sliceglitch data,
+					settings.sliceglitch.h-min, settings.sliceglitch.h-max,
+					settings.sliceglitch.off-min, settings.sliceglitch.off-max,
+					chanmask, 1, drift
+
+		context.put-image-data data, 0, 0
+		bloom context, settings.bloom.radius, settings.bloom.strength, settings.bloom.counter
+		data = context.get-image-data 0, 0, width, height
+		scanlines data, settings.scanlines.brightness if settings.scanlines.enabled
+		context.put-image-data data, 0, 0
+		if settings.tvscan.height and settings.tvscan.brightness then
+			scangrad = make-scangrad context, settings.tvscan.height, settings.tvscan.brightness
+			add-scangrad context, scangrad, t0 * settings.tvscan.speed
+
+		t1 = +new Date
+		speed = (t1 - t0)
+
+	start = !->
+		set-interval draw, (1000 / 30.0)
+
+	canvas = document.create-element "canvas"
+		& <<< {width: 256, height: 224}
+		&style.height = 800
+		document.body.append-child &
+		context = &get-context "2d"
+		{width, height} = canvas
+
+	image = new Image
+		&src = "mario.png"
+		&onload = -> start!
+
+	gui = new dat.GUI
+		&add-folder "leaks"
+			&add settings.leaks, "nMin", 0, 20 .step 1
+			&add settings.leaks, "nMax", 0, 20 .step 1
+			&add settings.leaks, "strength", 0, 1
+			&add settings.leaks, "magic1", -10, 10 .step 1
+			&add settings.leaks, "magic2", -10, 10 .step 1
+		&add-folder "sliceglitch"
+			&add settings.sliceglitch, "probability", 0, 100 .step 1
+			&add settings.sliceglitch, "nMin", 0, 100 .step 1
+			&add settings.sliceglitch, "nMax", 0, 100 .step 1
+			&add settings.sliceglitch, "randChan"
+			&add settings.sliceglitch, "chanR"
+			&add settings.sliceglitch, "chanG"
+			&add settings.sliceglitch, "chanB"
+			&add settings.sliceglitch, "hMin", 0, 100 .step 1
+			&add settings.sliceglitch, "hMax", 0, 100 .step 1
+			&add settings.sliceglitch, "offMin", 0, 100 .step 1
+			&add settings.sliceglitch, "offMax", 0, 100 .step 1
+			&add settings.sliceglitch, "driftProb", 0, 100 .step 1
+			&add settings.sliceglitch, "driftMag", -10, 10 .step 1
+		&add-folder "bloom"
+			&add settings.bloom, "radius", 0, 10 .step 1
+			&add settings.bloom, "strength", 0, 1
+			&add settings.bloom, "counter", 0, 1
+		&add-folder "scanlines"
+			&add settings.scanlines, "enabled"
+			&add settings.scanlines, "brightness", 0, 1
+		&add-folder "tvscan"
+			&add settings.tvscan, "height", 0, 500 .step 1
+			&add settings.tvscan, "brightness", 0, 1			
+			&add settings.tvscan, "speed", 0, 1			
