@@ -1,4 +1,4 @@
-var lerp, lerperCache, lerper, zwrap, randint, birandint, rand, makeScangrad, scanlines, leak, sliceoffset, sliceglitch, addScangrad, bloom, noise;
+var lerp, lerperCache, lerper, zwrap, zclamp, randint, birandint, rand, makeScangrad, scanlines, leak, sliceoffset, sliceglitch, addScangrad, bloom, noise, displacementMapper;
 lerp = function(a, b, alpha){
   alpha == null && (alpha = 0.5);
   return b * alpha + a * (1 - alpha);
@@ -31,6 +31,15 @@ zwrap = function(num, max){
     num += max;
   }
   return num % max;
+};
+zclamp = function(num, max){
+  if (num < 0) {
+    return 0;
+  }
+  if (num >= max) {
+    return max;
+  }
+  return num;
 };
 randint = function(min, max){
   return 0 | Math.random() * (max - min) + min;
@@ -86,7 +95,7 @@ leak = function(arg$, multiplier, magic1, magic2){
     for (offset = yy, to$ = yy + m; offset < to$; offset += 4) {
       src = offset + 4 + magic2;
       if (src >= 0 && offset < data.length) {
-        data[offset] = lerp(data[offset], data[offset + 4 + magic2]);
+        data[offset] = lerp(data[offset], data[src]);
       }
     }
   }
@@ -177,11 +186,43 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
     }
   }
 };
+displacementMapper = function(context, displacementMap, scaleX, scaleY){
+  var ref$, width, height, x$, y$, displacementData, sourceData, destData, d, y, yoff, x, offset, disZ, disX, disY, sourceX, sourceY, sourceOffset;
+  ref$ = context.canvas, width = ref$.width, height = ref$.height;
+  x$ = document.createElement("canvas");
+  x$.width = width;
+  x$.height = height;
+  y$ = x$.getContext("2d");
+  y$.drawImage(displacementMap, 0, 0, width, height);
+  displacementData = y$.getImageData(0, 0, width, height).data;
+  sourceData = context.getImageData(0, 0, width, height).data;
+  d = (destData = context.getImageData(0, 0, width, height)).data;
+  for (y = 0; y < height; ++y) {
+    yoff = y * width * 4;
+    for (x = 0; x < width; ++x) {
+      offset = yoff + x * 4;
+      disZ = displacementData[offset + 2] / 127.0;
+      disX = (displacementData[offset] - 127) / 128.0 * scaleX * disZ;
+      disY = (displacementData[offset + 1] - 127) / 128.0 * scaleY * disZ;
+      sourceX = 0 | Math.round(x + disX);
+      sourceY = 0 | Math.round(y + disY);
+      sourceOffset = zclamp(sourceY, height) * width * 4 + zclamp(sourceX, width) * 4;
+      d[offset++] = sourceData[sourceOffset++];
+      d[offset++] = sourceData[sourceOffset++];
+      d[offset++] = sourceData[sourceOffset++];
+      if (x == 64 && y == 64) {
+        console.log(x, y, displacementData[offset], displacementData[offset + 1], disX, disY);
+      }
+    }
+  }
+  context.putImageData(destData, 0, 0);
+};
 (function(){
-  var MARIO_IMAGE, settings, draw, start, x$, canvas, context, width, height, y$, image, z$, gui, z1$, z2$, z3$, z4$, z5$, z6$;
+  var MARIO_IMAGE, settings, afterimageData, createDisplacement, dismapImage, drawDebugGrid, draw, start, x$, canvas, context, width, height, y$, image, z$, gui, z1$, z2$, z3$, z4$, z5$, z6$, z7$, z8$;
   MARIO_IMAGE = 'data:image/png;base64,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';
   settings = {
     fps: 30,
+    grid: false,
     leaks: {
       nMin: 3,
       nMax: 7,
@@ -228,12 +269,73 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
       height: 300,
       brightness: 0.0,
       speed: 0.3
+    },
+    afterimage: {
+      enabled: false,
+      strengthOut: 0.2,
+      counterOut: 0.2,
+      strengthIn: 0.2
+    },
+    displacement: {
+      enabled: false,
+      strength: 15
+    }
+  };
+  afterimageData = null;
+  createDisplacement = function(){
+    var width, height, x$, canvas, y$, context, data, y, x, ix, iy, cdis, an, xd, yd, offset;
+    width = 256;
+    height = 224;
+    x$ = canvas = document.createElement("canvas");
+    x$.width = width;
+    x$.height = height;
+    y$ = context = x$.getContext("2d");
+    y$.fillStyle = "black";
+    y$.fillRect(0, 0, width, height);
+    data = y$.getImageData(0, 0, width, height);
+    for (y = 0; y < height; ++y) {
+      for (x = 0; x < width; ++x) {
+        ix = (x / width - 0.5) * 2;
+        iy = (y / height - 0.5) * 2;
+        cdis = 1.0 - (ix * ix + iy * iy);
+        cdis = Math.cos(cdis * 3.141 / 2.0);
+        an = Math.atan2(iy, ix);
+        xd = -Math.cos(an) * 125 * cdis;
+        yd = -Math.sin(an) * 125 * cdis;
+        offset = y * width * 4 + x * 4;
+        data.data[offset] = 127 + xd;
+        data.data[offset + 1] = 127 + yd;
+        data.data[offset + 2] = 127;
+      }
+    }
+    y$.putImageData(data, 0, 0);
+    return canvas;
+  };
+  dismapImage = createDisplacement();
+  drawDebugGrid = function(context){
+    var x, to$, y;
+    context.fillStyle = "white";
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = "black";
+    for (x = 0, to$ = width; x < to$; x += 8) {
+      context.moveTo(x, 0);
+      context.lineTo(x, height);
+      context.stroke();
+    }
+    for (y = 0, to$ = height; y < to$; y += 8) {
+      context.moveTo(0, y);
+      context.lineTo(width, y);
+      context.stroke();
     }
   };
   draw = function(){
     var t0, data, x, to$, chanmask, drift, y0, h, y1, scangrad, t1, speed;
     t0 = +new Date;
-    context.drawImage(image, 0, 0, width, height);
+    if (settings.grid) {
+      drawDebugGrid(context);
+    } else {
+      context.drawImage(image, 0, 0, width, height);
+    }
     data = context.getImageData(0, 0, width, height);
     if (randint(0, 100) < settings.sliceglitch.probability) {
       for (x = 0, to$ = randint(settings.sliceglitch.nMin, settings.sliceglitch.nMax); x < to$; ++x) {
@@ -262,9 +364,21 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
     for (x = 0, to$ = randint(settings.leaks.nMin, settings.leaks.nMax); x < to$; ++x) {
       leak(data, settings.leaks.strength, settings.leaks.magic1, settings.leaks.magic2);
     }
-    context.putImageData(data, 0, 0);
-    bloom(context, settings.bloom.radius, settings.bloom.strength, settings.bloom.counter);
-    data = context.getImageData(0, 0, width, height);
+    if (settings.bloom.strength) {
+      context.putImageData(data, 0, 0);
+      bloom(context, settings.bloom.radius, settings.bloom.strength, settings.bloom.counter);
+      data = context.getImageData(0, 0, width, height);
+    }
+    if (settings.afterimage.enabled) {
+      if (afterimageData) {
+        dataBlend(afterimageData, data, settings.afterimage.strengthOut, settings.afterimage.counterOut, "screen");
+      }
+      if (afterimageData && settings.afterimage.strengthIn < 1) {
+        dataBlend(data, afterimageData, settings.afterimage.strengthIn, 1.0 - settings.afterimage.strengthIn, "normal");
+      } else {
+        afterimageData = context.getImageData(0, 0, width, height);
+      }
+    }
     if (settings.scanlines.enabled) {
       scanlines(data, settings.scanlines.brightness);
     }
@@ -272,6 +386,12 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
     if (settings.tvscan.height && settings.tvscan.brightness) {
       scangrad = makeScangrad(context, settings.tvscan.height, settings.tvscan.brightness);
       addScangrad(context, scangrad, t0 * settings.tvscan.speed);
+    }
+    if (settings.displacement.enabled) {
+      context.strokeStyle = "black";
+      context.rect(0, 0, width - 1, height - 1);
+      context.stroke();
+      displacementMapper(context, dismapImage, settings.displacement.strength, settings.displacement.strength);
     }
     t1 = +new Date;
     speed = t1 - t0;
@@ -283,7 +403,7 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
   x$ = canvas = document.createElement("canvas");
   x$.width = 256;
   x$.height = 224;
-  x$.style.height = 800;
+  x$.style.height = 512;
   document.body.appendChild(x$);
   context = x$.getContext("2d");
   width = canvas.width, height = canvas.height;
@@ -294,10 +414,11 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
   };
   z$ = gui = new dat.GUI;
   z$.add(settings, "fps", 1, 100).step(1);
+  z$.add(settings, "grid");
   z1$ = z$.addFolder("leaks");
+  z1$.add(settings.leaks, "strength", 0, 1);
   z1$.add(settings.leaks, "nMin", 0, 20).step(1);
   z1$.add(settings.leaks, "nMax", 0, 20).step(1);
-  z1$.add(settings.leaks, "strength", 0, 1);
   z1$.add(settings.leaks, "magic1", -10, 10).step(1);
   z1$.add(settings.leaks, "magic2", -10, 10).step(1);
   z2$ = z$.addFolder("sliceglitch");
@@ -308,30 +429,39 @@ noise = function(arg$, y0, y1, noisiness, minBrightness, maxBrightness, replace)
   z2$.add(settings.sliceglitch, "chanR");
   z2$.add(settings.sliceglitch, "chanG");
   z2$.add(settings.sliceglitch, "chanB");
-  z2$.add(settings.sliceglitch, "hMin", 0, 100).step(1);
-  z2$.add(settings.sliceglitch, "hMax", 0, 100).step(1);
+  z2$.add(settings.sliceglitch, "hMin", 0, 300).step(1);
+  z2$.add(settings.sliceglitch, "hMax", 0, 300).step(1);
   z2$.add(settings.sliceglitch, "offMin", 0, 100).step(1);
   z2$.add(settings.sliceglitch, "offMax", 0, 100).step(1);
   z2$.add(settings.sliceglitch, "driftProb", 0, 100).step(1);
   z2$.add(settings.sliceglitch, "driftMag", -10, 10).step(1);
   z3$ = z$.addFolder("noise");
   z3$.add(settings.noise, "probability", 0, 100).step(1);
+  z3$.add(settings.noise, "noisiness", 0, 100).step(1);
   z3$.add(settings.noise, "nMin", 0, 100).step(1);
   z3$.add(settings.noise, "nMax", 0, 100).step(1);
-  z3$.add(settings.noise, "hMin", 0, 100).step(1);
-  z3$.add(settings.noise, "hMax", 0, 100).step(1);
+  z3$.add(settings.noise, "hMin", 0, 300).step(1);
+  z3$.add(settings.noise, "hMax", 0, 300).step(1);
   z3$.add(settings.noise, "brightnessMin", -255, 255).step(1);
   z3$.add(settings.noise, "brightnessMax", -255, 255).step(1);
   z3$.add(settings.noise, "replace");
   z4$ = z$.addFolder("bloom");
-  z4$.add(settings.bloom, "radius", 0, 10).step(1);
   z4$.add(settings.bloom, "strength", 0, 1);
+  z4$.add(settings.bloom, "radius", 0, 10).step(1);
   z4$.add(settings.bloom, "counter", 0, 1);
   z5$ = z$.addFolder("scanlines");
   z5$.add(settings.scanlines, "enabled");
   z5$.add(settings.scanlines, "brightness", 0, 1);
   z6$ = z$.addFolder("tvscan");
-  z6$.add(settings.tvscan, "height", 0, 500).step(1);
   z6$.add(settings.tvscan, "brightness", 0, 1);
+  z6$.add(settings.tvscan, "height", 0, 500).step(1);
   z6$.add(settings.tvscan, "speed", 0, 1);
+  z7$ = z$.addFolder("afterimage");
+  z7$.add(settings.afterimage, "enabled");
+  z7$.add(settings.afterimage, "strengthOut", 0, 1);
+  z7$.add(settings.afterimage, "counterOut", 0, 1);
+  z7$.add(settings.afterimage, "strengthIn", 0, 1);
+  z8$ = z$.addFolder("displacement");
+  z8$.add(settings.displacement, "enabled");
+  z8$.add(settings.displacement, "strength", -50, 50).step(1);
 }.call(this));

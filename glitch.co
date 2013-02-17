@@ -15,6 +15,13 @@ lerper = (alpha) ->
 zwrap = (num, max) ->
 	num += max while num < 0
 	return num % max
+
+zclamp = (num, max) ->
+	return 0 if num < 0
+	return max if num >= max
+	return num
+
+
 randint = (min, max) -> 0|(Math.random! * (max - min) + min)
 birandint = (min, max) -> 0|(Math.random! * (max - min) + min) * (if Math.random! <= 0.5 then -1 else +1)
 rand = (min, max) -> (Math.random! * (max - min) + min)
@@ -47,7 +54,7 @@ leak = !({data, width, height}, multiplier = 0.5, magic1 = 0, magic2 = 0) ->
 		yy = y * m + magic1
 		for offset from yy til yy + m by 4
 			src = offset + 4 + magic2
-			if src >= 0 and offset < data.length then data[offset] = lerp data[offset], data[offset+4+magic2]
+			if src >= 0 and offset < data.length then data[offset] = lerp data[offset], data[src]
 
 sliceoffset = !({data, width, height}, y0, y1, offset, chanmask=2b111, blend=0.2, drift=0) ->
 	return if not chanmask
@@ -109,6 +116,42 @@ noise = !({data, width, height}, y0, y1, noisiness, min-brightness, max-brightne
 					data[offset++] += brightness
 					data[offset++] += brightness
 
+displacement-mapper = !(context, displacement-map, scaleX, scaleY) ->
+	{width, height} = context.canvas
+
+
+	document.create-element "canvas"
+		& <<< {width, height}
+		&get-context "2d"
+			&draw-image displacement-map, 0, 0, width, height
+			displacement-data = &get-image-data 0, 0, width, height .data
+
+
+	source-data = context.get-image-data 0, 0, width, height .data
+	{data: d} = dest-data = context.get-image-data 0, 0, width, height
+
+
+	for y from 0 til height
+		yoff = y * width * 4
+		for x from 0 til width
+			offset = yoff + x * 4
+			disZ = (displacement-data[offset + 2]) / 127.0
+			disX = (displacement-data[offset] - 127) / 128.0 * scaleX * disZ
+			disY = (displacement-data[offset + 1] - 127) / 128.0 * scaleY * disZ
+
+
+			sourceX = 0 | Math.round(x + disX)
+			sourceY = 0 | Math.round(y + disY)
+			sourceOffset = (zclamp(sourceY, height) * width * 4 + zclamp(sourceX, width) * 4)
+			d[offset++] = source-data[sourceOffset++]
+			d[offset++] = source-data[sourceOffset++]
+			d[offset++] = source-data[sourceOffset++]
+
+			if x == 64 and y == 64
+				console.log x, y, displacement-data[offset], displacement-data[offset + 1], disX, disY
+			
+
+	context.put-image-data dest-data, 0, 0
 
 
 let
@@ -117,6 +160,8 @@ let
 
 	settings =
 		fps: 30
+		grid: false
+
 		leaks:
 			n-min: 3
 			n-max: 7
@@ -164,14 +209,73 @@ let
 			brightness: 0.0
 			speed: 0.3
 
+		afterimage:
+			enabled: false
+			strengthOut: 0.2
+			counterOut: 0.2
+			strengthIn: 0.2
+
+		displacement:
+			enabled: false
+			strength: 15
+
+	afterimage-data = null
+
+	create-displacement = !->
+		width = 256
+		height = 224
+		canvas = document.create-element "canvas"
+			& <<< {width, height}
+			context = &get-context "2d"
+				&fill-style = "black"
+				&fill-rect 0, 0, width, height
+				data = &get-image-data 0, 0, width, height
+				for y from 0 til height
+					for x from 0 til width
+						ix = ((x / width) - 0.5) * 2
+						iy = ((y / height) - 0.5) * 2
+						cdis = 1.0 - (ix * ix + iy * iy)
+						cdis = Math.cos(cdis * 3.141 / 2.0)
+						an = Math.atan2(iy, ix)
+						xd = -Math.cos(an) * 125 * cdis
+						yd = -Math.sin(an) * 125 * cdis
+						offset = y * width * 4 + x * 4
+						data.data[offset] = 127 + xd
+						data.data[offset+1] = 127 + yd
+						data.data[offset+2] = 127
+
+				&put-image-data data, 0, 0
+			#document.body.append-child &
+		return canvas
+
+	dismap-image = create-displacement!
+
+	draw-debug-grid = !(context)->
+		context.fill-style = "white"
+		context.fill-rect 0, 0, width, height
+		context.stroke-style = "black"
+		for x from 0 til width by 8
+			context.move-to x, 0
+			context.line-to x, height
+			context.stroke!
+		for y from 0 til height by 8
+			context.move-to 0, y
+			context.line-to width, y
+			context.stroke!
 
 
 	draw = !->
 		t0 = +new Date
-		context.draw-image image, 0, 0, width, height
+
+		if settings.grid then
+			draw-debug-grid context
+		else
+			context.draw-image image, 0, 0, width, height
+
 		data = context.get-image-data 0, 0, width, height
 
 		# ------ DATA GLITCHES
+
 
 		if randint(0, 100) < settings.sliceglitch.probability then
 
@@ -206,16 +310,36 @@ let
 		for x from 0 til randint(settings.leaks.n-min, settings.leaks.n-max)
 			leak data, settings.leaks.strength, settings.leaks.magic1, settings.leaks.magic2
 
+		if settings.bloom.strength
+			context.put-image-data data, 0, 0
+			bloom context, settings.bloom.radius, settings.bloom.strength, settings.bloom.counter
+			data = context.get-image-data 0, 0, width, height
 		
+		if settings.afterimage.enabled
+			if afterimage-data then
+				data-blend afterimage-data, data, settings.afterimage.strength-out, settings.afterimage.counter-out, "screen"
+			
+			if afterimage-data and settings.afterimage.strength-in < 1 then
+				data-blend data, afterimage-data, settings.afterimage.strength-in, (1.0 - settings.afterimage.strength-in), "normal"
+			else
+				afterimage-data := context.get-image-data 0, 0, width, height
+		
+		# ------ POST GLITCHES
 
-		context.put-image-data data, 0, 0
-		bloom context, settings.bloom.radius, settings.bloom.strength, settings.bloom.counter
-		data = context.get-image-data 0, 0, width, height
-		scanlines data, settings.scanlines.brightness if settings.scanlines.enabled
+		if settings.scanlines.enabled
+			scanlines data, settings.scanlines.brightness 
+
 		context.put-image-data data, 0, 0
 		if settings.tvscan.height and settings.tvscan.brightness then
 			scangrad = make-scangrad context, settings.tvscan.height, settings.tvscan.brightness
 			add-scangrad context, scangrad, t0 * settings.tvscan.speed
+
+		if settings.displacement.enabled then
+			context.stroke-style = "black"
+			context.rect 0, 0, width - 1, height - 1
+			context.stroke!
+
+			displacement-mapper context, dismap-image, settings.displacement.strength, settings.displacement.strength
 
 		t1 = +new Date
 		speed = (t1 - t0)
@@ -223,14 +347,14 @@ let
 
 	start = !->
 		draw!
-		#set-interval draw, (1000 / 30.0)
 
 	canvas = document.create-element "canvas"
 		& <<< {width: 256, height: 224}
-		&style.height = 800
+		&style.height = 512
 		document.body.append-child &
 		context = &get-context "2d"
 		{width, height} = canvas
+
 
 	image = new Image
 		&src = MARIO_IMAGE
@@ -238,10 +362,11 @@ let
 
 	gui = new dat.GUI
 		&add settings, "fps", 1, 100 .step 1
+		&add settings, "grid"
 		&add-folder "leaks"
+			&add settings.leaks, "strength", 0, 1
 			&add settings.leaks, "nMin", 0, 20 .step 1
 			&add settings.leaks, "nMax", 0, 20 .step 1
-			&add settings.leaks, "strength", 0, 1
 			&add settings.leaks, "magic1", -10, 10 .step 1
 			&add settings.leaks, "magic2", -10, 10 .step 1
 		&add-folder "sliceglitch"
@@ -252,29 +377,38 @@ let
 			&add settings.sliceglitch, "chanR"
 			&add settings.sliceglitch, "chanG"
 			&add settings.sliceglitch, "chanB"
-			&add settings.sliceglitch, "hMin", 0, 100 .step 1
-			&add settings.sliceglitch, "hMax", 0, 100 .step 1
+			&add settings.sliceglitch, "hMin", 0, 300 .step 1
+			&add settings.sliceglitch, "hMax", 0, 300 .step 1
 			&add settings.sliceglitch, "offMin", 0, 100 .step 1
 			&add settings.sliceglitch, "offMax", 0, 100 .step 1
 			&add settings.sliceglitch, "driftProb", 0, 100 .step 1
 			&add settings.sliceglitch, "driftMag", -10, 10 .step 1
 		&add-folder "noise"
 			&add settings.noise, "probability", 0, 100 .step 1
+			&add settings.noise, "noisiness", 0, 100 .step 1
 			&add settings.noise, "nMin", 0, 100 .step 1
 			&add settings.noise, "nMax", 0, 100 .step 1
-			&add settings.noise, "hMin", 0, 100 .step 1
-			&add settings.noise, "hMax", 0, 100 .step 1
+			&add settings.noise, "hMin", 0, 300 .step 1
+			&add settings.noise, "hMax", 0, 300 .step 1
 			&add settings.noise, "brightnessMin", -255, 255 .step 1
 			&add settings.noise, "brightnessMax", -255, 255 .step 1
 			&add settings.noise, "replace"
 		&add-folder "bloom"
-			&add settings.bloom, "radius", 0, 10 .step 1
 			&add settings.bloom, "strength", 0, 1
+			&add settings.bloom, "radius", 0, 10 .step 1
 			&add settings.bloom, "counter", 0, 1
 		&add-folder "scanlines"
 			&add settings.scanlines, "enabled"
 			&add settings.scanlines, "brightness", 0, 1
 		&add-folder "tvscan"
-			&add settings.tvscan, "height", 0, 500 .step 1
 			&add settings.tvscan, "brightness", 0, 1			
-			&add settings.tvscan, "speed", 0, 1			
+			&add settings.tvscan, "height", 0, 500 .step 1
+			&add settings.tvscan, "speed", 0, 1
+		&add-folder "afterimage"
+			&add settings.afterimage, "enabled"
+			&add settings.afterimage, "strengthOut", 0, 1
+			&add settings.afterimage, "counterOut", 0, 1
+			&add settings.afterimage, "strengthIn", 0, 1
+		&add-folder "displacement"
+			&add settings.displacement, "enabled"
+			&add settings.displacement, "strength", -50, 50 .step 1
