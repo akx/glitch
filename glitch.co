@@ -1,13 +1,16 @@
 lerp = (a, b, alpha=0.5) -> b * alpha + a * (1 - alpha)
-lerper-cache = {}
+lerper-cache = {
+	_a: (a, b) -> a
+	_b: (a, b) -> b
+
+}
 lerper = (alpha) ->
-	if alpha >= 1 then return (a, b) -> b
-	if alpha <= 0 then return (a, b) -> a
-	else
-		key = 0 | (alpha * 100)
-		if lerper-cache[key] then return that
-		beta = 1 - alpha
-		return lerper-cache[key] = new Function("a", "b", "return b * #alpha + a * #beta")
+	if alpha <= 0 then return lerper-cache._a
+	if alpha >= 1 then return lerper-cache._b
+	key = 0 | (alpha * 100)
+	if lerper-cache[key] then return that
+	beta = 1 - alpha
+	return lerper-cache[key] = new Function("a", "b", "return b * #alpha + a * #beta")
 
 zwrap = (num, max) ->
 	num += max while num < 0
@@ -90,11 +93,30 @@ bloom = !(context, radius, strength, counter) ->
 	data-blend blur-data, data, strength, counter, "screen"
 	context.put-image-data data, 0, 0
 
+noise = !({data, width, height}, y0, y1, noisiness, min-brightness, max-brightness, replace) ->
+	for y from y0 til y1
+		yoff = y * width * 4
+		for x from 0 til width
+			if rand(0, 100) < noisiness
+				offset = yoff + x * 4
+				brightness = randint min-brightness, max-brightness
+				if replace then
+					data[offset++] = brightness
+					data[offset++] = brightness
+					data[offset++] = brightness
+				else
+					data[offset++] += brightness
+					data[offset++] += brightness
+					data[offset++] += brightness
+
+
+
 let
 
 	MARIO_IMAGE = 'data:image/png;base64,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'
 
 	settings =
+		fps: 30
 		leaks:
 			n-min: 3
 			n-max: 7
@@ -117,6 +139,17 @@ let
 			drift-prob: 20
 			drift-mag: 2
 
+		noise:
+			probability: 0
+			n-min: 5
+			n-max: 5
+			h-min: 5
+			h-max: 5
+			noisiness: 35
+			brightness-min: 10
+			brightness-max: 50
+			replace: false
+
 		bloom:
 			radius: 0
 			strength: 0.5
@@ -138,9 +171,7 @@ let
 		context.draw-image image, 0, 0, width, height
 		data = context.get-image-data 0, 0, width, height
 
-		for x from 0 til randint(settings.leaks.n-min, settings.leaks.n-max)
-			leak data, settings.leaks.strength, settings.leaks.magic1, settings.leaks.magic2
-
+		# ------ DATA GLITCHES
 
 		if randint(0, 100) < settings.sliceglitch.probability then
 
@@ -156,6 +187,27 @@ let
 					settings.sliceglitch.off-min, settings.sliceglitch.off-max,
 					chanmask, 1, drift
 
+
+		if randint(0, 100) < settings.noise.probability then
+			for x from 0 til randint(settings.noise.n-min, settings.noise.n-max)
+				y0 = randint 0, height
+				h = randint settings.noise.h-min, settings.noise.h-max
+				y1 = y0 + h
+				noise data,
+					y0, y1,
+					settings.noise.noisiness,
+					settings.noise.brightness-min, settings.noise.brightness-max,
+					settings.noise.replace
+
+
+		# ------ ANALOG GLITCHES
+
+
+		for x from 0 til randint(settings.leaks.n-min, settings.leaks.n-max)
+			leak data, settings.leaks.strength, settings.leaks.magic1, settings.leaks.magic2
+
+		
+
 		context.put-image-data data, 0, 0
 		bloom context, settings.bloom.radius, settings.bloom.strength, settings.bloom.counter
 		data = context.get-image-data 0, 0, width, height
@@ -167,9 +219,11 @@ let
 
 		t1 = +new Date
 		speed = (t1 - t0)
+		set-timeout draw, 1000 / settings.fps
 
 	start = !->
-		set-interval draw, (1000 / 30.0)
+		draw!
+		#set-interval draw, (1000 / 30.0)
 
 	canvas = document.create-element "canvas"
 		& <<< {width: 256, height: 224}
@@ -183,6 +237,7 @@ let
 		&onload = -> start!
 
 	gui = new dat.GUI
+		&add settings, "fps", 1, 100 .step 1
 		&add-folder "leaks"
 			&add settings.leaks, "nMin", 0, 20 .step 1
 			&add settings.leaks, "nMax", 0, 20 .step 1
@@ -203,6 +258,15 @@ let
 			&add settings.sliceglitch, "offMax", 0, 100 .step 1
 			&add settings.sliceglitch, "driftProb", 0, 100 .step 1
 			&add settings.sliceglitch, "driftMag", -10, 10 .step 1
+		&add-folder "noise"
+			&add settings.noise, "probability", 0, 100 .step 1
+			&add settings.noise, "nMin", 0, 100 .step 1
+			&add settings.noise, "nMax", 0, 100 .step 1
+			&add settings.noise, "hMin", 0, 100 .step 1
+			&add settings.noise, "hMax", 0, 100 .step 1
+			&add settings.noise, "brightnessMin", -255, 255 .step 1
+			&add settings.noise, "brightnessMax", -255, 255 .step 1
+			&add settings.noise, "replace"
 		&add-folder "bloom"
 			&add settings.bloom, "radius", 0, 10 .step 1
 			&add settings.bloom, "strength", 0, 1
