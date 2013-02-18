@@ -218,7 +218,7 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
   context.putImageData(destData, 0, 0);
 };
 (function(){
-  var MARIO_IMAGE, settings, afterimageData, createDisplacement, dismapImage, drawDebugGrid, draw, start, x$, canvas, context, width, height, y$, image, z$, gui, z1$, z2$, z3$, z4$, z5$, z6$, z7$, z8$;
+  var MARIO_IMAGE, settings, afterimageData, createDisplacement, dismapImage, drawDebugGrid, draw, start, scale, x$, canvas, ref$, context, width, height, y$, image, z$, gui, z1$, z2$, z3$, z4$, z5$, z6$, z7$, z8$;
   MARIO_IMAGE = 'data:image/png;base64,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';
   settings = {
     fps: 30,
@@ -314,6 +314,7 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
   dismapImage = createDisplacement();
   drawDebugGrid = function(context){
     var x, to$, y;
+    context.beginPath();
     context.fillStyle = "white";
     context.fillRect(0, 0, width, height);
     context.strokeStyle = "black";
@@ -326,7 +327,6 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
       context.lineTo(width, y);
     }
     context.stroke();
-    context.closePath();
   };
   draw = function(){
     var t0, data, x, to$, chanmask, drift, y0, h, y1, scangrad, t1, speed;
@@ -388,6 +388,7 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
       addScangrad(context, scangrad, t0 * settings.tvscan.speed);
     }
     if (settings.displacement.enabled) {
+      context.beginPath();
       context.strokeStyle = "black";
       context.rect(0, 0, width - 1, height - 1);
       context.stroke();
@@ -400,10 +401,13 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
   start = function(){
     draw();
   };
+  scale = 2.3;
   x$ = canvas = document.createElement("canvas");
   x$.width = 256;
   x$.height = 224;
-  x$.style.height = 512;
+  ref$ = x$.style;
+  ref$.width = 256 * scale;
+  ref$.height = 224 * scale;
   document.body.appendChild(x$);
   context = x$.getContext("2d");
   width = canvas.width, height = canvas.height;

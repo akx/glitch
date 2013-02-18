@@ -251,6 +251,7 @@ let
 	dismap-image = create-displacement!
 
 	draw-debug-grid = !(context)->
+		context.begin-path!
 		context.fill-style = "white"
 		context.fill-rect 0, 0, width, height
 		context.stroke-style = "black"
@@ -262,7 +263,6 @@ let
 			context.move-to 0, y
 			context.line-to width, y
 		context.stroke!
-		context.close-path!
 
 
 	draw = !->
@@ -336,6 +336,7 @@ let
 			add-scangrad context, scangrad, t0 * settings.tvscan.speed
 
 		if settings.displacement.enabled then
+			context.begin-path!
 			context.stroke-style = "black"
 			context.rect 0, 0, width - 1, height - 1
 			context.stroke!
@@ -349,9 +350,12 @@ let
 	start = !->
 		draw!
 
+	scale = 2.3
+
 	canvas = document.create-element "canvas"
 		& <<< {width: 256, height: 224}
-		&style.height = 512
+
+		&style <<< {width: 256 * scale, height: 224 * scale}
 		document.body.append-child &
 		context = &get-context "2d"
 		{width, height} = canvas
