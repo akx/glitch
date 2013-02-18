@@ -320,13 +320,13 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
     for (x = 0, to$ = width; x < to$; x += 8) {
       context.moveTo(x, 0);
       context.lineTo(x, height);
-      context.stroke();
     }
     for (y = 0, to$ = height; y < to$; y += 8) {
       context.moveTo(0, y);
       context.lineTo(width, y);
-      context.stroke();
     }
+    context.stroke();
+    context.closePath();
   };
   draw = function(){
     var t0, data, x, to$, chanmask, drift, y0, h, y1, scangrad, t1, speed;

@@ -257,11 +257,12 @@ let
 		for x from 0 til width by 8
 			context.move-to x, 0
 			context.line-to x, height
-			context.stroke!
+		
 		for y from 0 til height by 8
 			context.move-to 0, y
 			context.line-to width, y
-			context.stroke!
+		context.stroke!
+		context.close-path!
 
 
 	draw = !->
