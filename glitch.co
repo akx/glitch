@@ -187,10 +187,17 @@ from-ycbcr = !(image-data) -> matrix-xform image-data, from-ycbcr-matrix
 let
 
 	MARIO_IMAGE = 'data:image/png;base64,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'
+	PONG_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAADgAQMAAADWjyoTAAAABlBMVEUAAAD///+l2Z/dAAABBklEQVR4Xu3WQYrCQBAF0N9k4bKO4E30ZoNH61l5DY9Q2bkIlMaBQBjsTyzbprH++pH0p6pDsCmRiJH4ARSrpIxVdgtY0haIiaVsauoBgAuIAFBVF0jZCWwGVgJAbSCspqTsAOQVZFgOQDeKXpwObpa/hZxJiwaAHLKjFlGz3xbf93344WBJO0Bb9DyL/lcuWsSwokWsXAxrvL4ZAO1B+xbRAmKGZFOasMtilxIQAsgTUBOccD1g0Dv4VeyfgvEfUGwDSoHlGSQGUACXMhjrA52OfiCvArO/WRztKcADoAy0KTgBy0YNVgJSBPPKfQRgT1rUAvwMq+tfD6QNoKf/ByP5BPimRG5Sg0pghTsM4gAAAABJRU5ErkJggg=='
+	C64_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADIAQMAAACjyqroAAAABlBMVEVAQOCgoPznx/VsAAABO0lEQVR4Xu3SsYpcMQyF4VO5ClurCPMMKbcQeRaB4W/GRbpxYXQffbM4lymGFLdYkkZfq4OE4OiLFffeffpKedMydxf+kgEQPB4MCPEmHEMgAD35JwXHARCKmyAsRNsjPX18UnC/A2tqoZVuIb7t0etGegdmiEPQLMSPl40Agt4ZjH0RMOQhgL9/zZ+vcXdZ6v8p3tCyLscz+66S2VnIRaYrV6Yk3obwhwCLhwSYPQtpgYIISXGbgkNBWBxSg/f3s5BgEWdQi19aed8n51367j/NzkIut+maa05JHFOTrmbNokuNZnYWErNoirk30oYGXRg7COwgxg6iGBHn19Dl5nZ+nXkWcpmlK8jUv1ZW2kQXED4uBgFdsGbiumAGmC4YwbArSZJppi/0oUsqWEoppZRSSimllFJKKaWU3x+6lxF1jMiHAAAAAElFTkSuQmCC'
+
+	width = height = 0
 
 	settings =
 		fps: 30
-		grid: false
+		width: 256
+		height: 224
+		scale: 2.0
+		image: "mario"
 		ycbcrPre: false
 		ycbcrPost: false
 
@@ -300,10 +307,11 @@ let
 	draw = !->
 		t0 = +new Date
 
-		if settings.grid then
-			draw-debug-grid context
-		else
-			context.draw-image image, 0, 0, width, height
+		switch settings.image
+			case "mario" => context.draw-image mario-image, 0, 0, width, height
+			case "pong" => context.draw-image pong-image, 0, 0, width, height
+			case "c64" => context.draw-image c64-image, 0, 0, width, height
+			case "grid" => draw-debug-grid context
 
 		data = context.get-image-data 0, 0, width, height
 
@@ -406,24 +414,39 @@ let
 
 
 
-	scale = 2.3
+	size-change = ->
+		width := canvas.width = settings.width
+		height := canvas.height = settings.height
+		canvas.style <<< {width: width * settings.scale, height: height * settings.scale}
+
 
 	canvas = document.create-element "canvas"
-		& <<< {width: 256, height: 224}
-
-		&style <<< {width: 256 * scale, height: 224 * scale}
 		document.body.append-child &
 		context = &get-context "2d"
-		{width, height} = canvas
+
+	size-change!
 
 
-	image = new Image
+	mario-image = new Image
 		&src = MARIO_IMAGE
 		&onload = -> start!
 
+	pong-image = new Image
+		&src = PONG_IMAGE
+
+	c64-image = new Image
+		&src = C64_IMAGE
+
+
 	gui = new dat.GUI
 		&add settings, "fps", 1, 100 .step 1
-		&add settings, "grid"
+		&add settings, "scale", 1, 5 .step 0.1
+			&on-change -> size-change!
+		&add settings, "width", 64, 640 .step 1
+			&on-change -> size-change!
+		&add settings, "height", 64, 480 .step 1
+			&on-change -> size-change!
+		&add settings, "image", ["mario", "pong", "grid", "c64"]
 		&add settings, "ycbcrPre"
 		&add settings, "ycbcrPost"
 		&add-folder "leaks"
@@ -440,8 +463,8 @@ let
 			&add settings.sliceglitch, "chanR"
 			&add settings.sliceglitch, "chanG"
 			&add settings.sliceglitch, "chanB"
-			&add settings.sliceglitch, "hMin", 0, 300 .step 1
-			&add settings.sliceglitch, "hMax", 0, 300 .step 1
+			&add settings.sliceglitch, "hMin", 1, 300 .step 1
+			&add settings.sliceglitch, "hMax", 1, 300 .step 1
 			&add settings.sliceglitch, "offMin", 0, 100 .step 1
 			&add settings.sliceglitch, "offMax", 0, 100 .step 1
 			&add settings.sliceglitch, "driftProb", 0, 100 .step 1
@@ -451,8 +474,8 @@ let
 			&add settings.noise, "noisiness", 0, 100 .step 1
 			&add settings.noise, "nMin", 0, 100 .step 1
 			&add settings.noise, "nMax", 0, 100 .step 1
-			&add settings.noise, "hMin", 0, 300 .step 1
-			&add settings.noise, "hMax", 0, 300 .step 1
+			&add settings.noise, "hMin", 1, 300 .step 1
+			&add settings.noise, "hMax", 1, 300 .step 1
 			&add settings.noise, "brightnessMin", -255, 255 .step 1
 			&add settings.noise, "brightnessMax", -255, 255 .step 1
 			&add settings.noise, "replace"
