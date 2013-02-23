@@ -366,7 +366,7 @@ fromYcbcr = function(imageData){
       context.drawImage(pongImage, 0, 0, width, height);
       break;
     case "c64":
-      context.drawImage(c64Image, 0, 0);
+      context.drawImage(c64Image, 0, 0, width, height);
       break;
     case "grid":
       drawDebugGrid(context);
