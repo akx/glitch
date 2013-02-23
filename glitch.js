@@ -1,4 +1,4 @@
-var lerp, lerperCache, lerper, zwrap, zclamp, randint, birandint, rand, makeScangrad, scanlines, leak, sliceoffset, sliceglitch, addScangrad, bloom, noise, displacementMapper;
+var lerp, lerperCache, lerper, zwrap, zclamp, randint, birandint, rand, makeScangrad, scanlines, leak, sliceoffset, sliceglitch, addScangrad, bloom, noise, displacementMapper, toYcbcrMatrix, fromYcbcrMatrix, matrixXform, toYcbcr, fromYcbcr;
 lerp = function(a, b, alpha){
   alpha == null && (alpha = 0.5);
   return b * alpha + a * (1 - alpha);
@@ -124,7 +124,7 @@ sliceoffset = function(arg$, y0, y1, offset, chanmask, blend, drift){
     offset += drift;
     for (x = x0; dir < 0 ? x > x1 : x < x1; x += dir) {
       dstOffset = yoff + x * 4;
-      srcOffset = yoff + zwrap(x + offset, width) * 4;
+      srcOffset = yoff + zwrap(0 | x + offset, width) * 4;
       if (chanmask & 1) {
         data[dstOffset] = lerp(data[dstOffset], data[srcOffset]);
       }
@@ -217,12 +217,36 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
   }
   context.putImageData(destData, 0, 0);
 };
+toYcbcrMatrix = [0, 0, 0.299, 0.587, 0.114, 0, 128, -0.169, -0.331, 0.500, 0, 128, 0.500, -0.419, 0.081];
+fromYcbcrMatrix = [0, 0, 1, 0, 1.4, -128, 0, 1, -0.343, -0.711, -128, 0, 1, 1.765, 0];
+matrixXform = function(arg$, matrix){
+  var data, width, height, offset, rPre, rPost, r0, r1, r2, gPre, gPost, g0, g1, g2, bPre, bPost, b0, b1, b2, to$, r, g, b;
+  data = arg$.data, width = arg$.width, height = arg$.height;
+  offset = 0;
+  rPre = matrix[0], rPost = matrix[1], r0 = matrix[2], r1 = matrix[3], r2 = matrix[4], gPre = matrix[5], gPost = matrix[6], g0 = matrix[7], g1 = matrix[8], g2 = matrix[9], bPre = matrix[10], bPost = matrix[11], b0 = matrix[12], b1 = matrix[13], b2 = matrix[14];
+  for (offset = 0, to$ = data.length; offset < to$; offset += 4) {
+    r = data[offset] + rPre;
+    g = data[offset + 1] + gPre;
+    b = data[offset + 2] + bPre;
+    data[offset] = (r0 * r + r1 * g + r2 * b) + rPost;
+    data[offset + 1] = (g0 * r + g1 * g + g2 * b) + gPost;
+    data[offset + 2] = (b0 * r + b1 * g + b2 * b) + bPost;
+  }
+};
+toYcbcr = function(imageData){
+  matrixXform(imageData, toYcbcrMatrix);
+};
+fromYcbcr = function(imageData){
+  matrixXform(imageData, fromYcbcrMatrix);
+};
 (function(){
   var MARIO_IMAGE, settings, afterimageData, createDisplacement, dismapImage, drawDebugGrid, draw, start, scale, x$, canvas, ref$, context, width, height, y$, image, z$, gui, z1$, z2$, z3$, z4$, z5$, z6$, z7$, z8$;
   MARIO_IMAGE = 'data:image/png;base64,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';
   settings = {
     fps: 30,
     grid: false,
+    ycbcrPre: false,
+    ycbcrPost: false,
     leaks: {
       nMin: 3,
       nMax: 7,
@@ -337,6 +361,9 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
       context.drawImage(image, 0, 0, width, height);
     }
     data = context.getImageData(0, 0, width, height);
+    if (settings.ycbcrPre) {
+      toYcbcr(data);
+    }
     if (randint(0, 100) < settings.sliceglitch.probability) {
       for (x = 0, to$ = randint(settings.sliceglitch.nMin, settings.sliceglitch.nMax); x < to$; ++x) {
         chanmask = 0;
@@ -382,7 +409,11 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
     if (settings.scanlines.enabled) {
       scanlines(data, settings.scanlines.brightness);
     }
+    if (settings.ycbcrPost) {
+      fromYcbcr(data);
+    }
     context.putImageData(data, 0, 0);
+    data = null;
     if (settings.tvscan.height && settings.tvscan.brightness) {
       scangrad = makeScangrad(context, settings.tvscan.height, settings.tvscan.brightness);
       addScangrad(context, scangrad, t0 * settings.tvscan.speed);
@@ -419,6 +450,8 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
   z$ = gui = new dat.GUI;
   z$.add(settings, "fps", 1, 100).step(1);
   z$.add(settings, "grid");
+  z$.add(settings, "ycbcrPre");
+  z$.add(settings, "ycbcrPost");
   z1$ = z$.addFolder("leaks");
   z1$.add(settings.leaks, "strength", 0, 1);
   z1$.add(settings.leaks, "nMin", 0, 20).step(1);

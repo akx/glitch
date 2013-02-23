@@ -73,7 +73,7 @@ sliceoffset = !({data, width, height}, y0, y1, offset, chanmask=2b111, blend=0.2
 		offset += drift
 		for x from x0 til x1 by dir
 			dst-offset = yoff + x * 4
-			src-offset = yoff + zwrap(x + offset, width) * 4
+			src-offset = yoff + zwrap(0 | (x + offset), width) * 4
 			if chanmask & 1 then data[dst-offset] = lerp data[dst-offset], data[src-offset]
 			if chanmask & 2 then data[dst-offset+1] = lerp data[dst-offset+1], data[src-offset+1]
 			if chanmask & 4 then data[dst-offset+2] = lerp data[dst-offset+2], data[src-offset+2]
@@ -150,9 +150,42 @@ displacement-mapper = !(context, displacement-map, scaleX, scaleY) ->
 			if x == 64 and y == 64
 				console.log x, y, displacement-data[offset], displacement-data[offset + 1], disX, disY
 			
-
 	context.put-image-data dest-data, 0, 0
 
+# Thanks to http://www.equasys.de/colorconversion.html
+
+to-ycbcr-matrix = [
+#	pre post 	red		green	blue
+	0,	0,		 0.299,	 0.587,	0.114,
+	0,	128,	-0.169,	-0.331,	0.500,
+	0,	128,	 0.500,	-0.419,	0.081,
+]
+
+from-ycbcr-matrix = [
+#	pre post 	red		green	blue
+	0,		0,	1,		 0,		 1.4,
+	-128,	0,	1,		-0.343, -0.711,
+	-128,	0,	1,		 1.765,	 0
+]
+
+matrix-xform = !({data, width, height}, matrix) ->
+	offset = 0
+	[
+		r-pre, r-post, r0, r1, r2,
+		g-pre, g-post, g0, g1, g2,
+		b-pre, b-post, b0, b1, b2,
+	] = matrix
+
+	for offset from 0 til data.length by 4
+		r = data[offset] + r-pre
+		g = data[offset+1] + g-pre
+		b = data[offset+2] + b-pre
+		data[offset] =   (r0 * r + r1 * g + r2 * b) + r-post
+		data[offset+1] = (g0 * r + g1 * g + g2 * b) + g-post
+		data[offset+2] = (b0 * r + b1 * g + b2 * b) + b-post
+
+to-ycbcr = !(image-data) -> matrix-xform image-data, to-ycbcr-matrix
+from-ycbcr = !(image-data) -> matrix-xform image-data, from-ycbcr-matrix
 
 let
 
@@ -161,6 +194,8 @@ let
 	settings =
 		fps: 30
 		grid: false
+		ycbcrPre: false
+		ycbcrPost: false
 
 		leaks:
 			n-min: 3
@@ -275,6 +310,9 @@ let
 
 		data = context.get-image-data 0, 0, width, height
 
+		if settings.ycbcrPre then to-ycbcr data
+
+
 		# ------ DATA GLITCHES
 
 
@@ -325,12 +363,18 @@ let
 			else
 				afterimage-data := context.get-image-data 0, 0, width, height
 		
+
 		# ------ POST GLITCHES
 
 		if settings.scanlines.enabled
 			scanlines data, settings.scanlines.brightness 
+		
+		if settings.ycbcrPost then from-ycbcr data
 
 		context.put-image-data data, 0, 0
+
+		data = null # unusable from here on out
+
 		if settings.tvscan.height and settings.tvscan.brightness then
 			scangrad = make-scangrad context, settings.tvscan.height, settings.tvscan.brightness
 			add-scangrad context, scangrad, t0 * settings.tvscan.speed
@@ -342,6 +386,8 @@ let
 			context.stroke!
 
 			displacement-mapper context, dismap-image, settings.displacement.strength, settings.displacement.strength
+
+
 
 		t1 = +new Date
 		speed = (t1 - t0)
@@ -368,6 +414,8 @@ let
 	gui = new dat.GUI
 		&add settings, "fps", 1, 100 .step 1
 		&add settings, "grid"
+		&add settings, "ycbcrPre"
+		&add settings, "ycbcrPost"
 		&add-folder "leaks"
 			&add settings.leaks, "strength", 0, 1
 			&add settings.leaks, "nMin", 0, 20 .step 1
