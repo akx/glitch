@@ -79,7 +79,7 @@ scanlines = function(arg$, multiplier){
   }
 };
 leak = function(arg$, multiplier, magic1, magic2){
-  var data, width, height, lerp, m, len, y, yy, offset, to$, src;
+  var data, width, height, lerp, dwidth, len, y, yoffset, offset, to$, src;
   data = arg$.data, width = arg$.width, height = arg$.height;
   multiplier == null && (multiplier = 0.5);
   magic1 == null && (magic1 = 0);
@@ -88,13 +88,13 @@ leak = function(arg$, multiplier, magic1, magic2){
     return;
   }
   lerp = lerper(multiplier);
-  m = width * 4;
+  dwidth = width * 4;
   len = data.length;
   for (y = 0; y < height; ++y) {
-    yy = y * m + magic1;
-    for (offset = yy, to$ = yy + m; offset < to$; offset += 4) {
+    yoffset = y * dwidth + magic1;
+    for (offset = yoffset, to$ = yoffset + dwidth; offset < to$; offset += 4) {
       src = offset + 4 + magic2;
-      if (src >= 0 && offset < data.length) {
+      if (src >= 0 && src < len && offset >= 0 && offset < len) {
         data[offset] = lerp(data[offset], data[src]);
       }
     }
@@ -210,9 +210,6 @@ displacementMapper = function(context, displacementMap, scaleX, scaleY){
       d[offset++] = sourceData[sourceOffset++];
       d[offset++] = sourceData[sourceOffset++];
       d[offset++] = sourceData[sourceOffset++];
-      if (x == 64 && y == 64) {
-        console.log(x, y, displacementData[offset], displacementData[offset + 1], disX, disY);
-      }
     }
   }
   context.putImageData(destData, 0, 0);
@@ -431,6 +428,19 @@ fromYcbcr = function(imageData){
   };
   start = function(){
     draw();
+  };
+  window.benchmarkDraws = function(){
+    var t0, n, x, t1, dur;
+    t0 = +new Date;
+    n = 50;
+    for (x = 0; x < n; ++x) {
+      draw();
+    }
+    t1 = +new Date;
+    dur = (t1 - t0) / 1000;
+    console.log("draws", n);
+    console.log("duration", dur);
+    console.log("fps", n / dur);
   };
   scale = 2.3;
   x$ = canvas = document.createElement("canvas");

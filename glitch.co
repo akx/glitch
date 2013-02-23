@@ -48,13 +48,14 @@ scanlines = !({data, width, height}, multiplier = 0.7) ->
 leak = !({data, width, height}, multiplier = 0.5, magic1 = 0, magic2 = 0) ->
 	return if multiplier <= 0
 	lerp = lerper multiplier
-	m = width * 4
+	dwidth = width * 4
 	len = data.length
 	for y from 0 til height
-		yy = y * m + magic1
-		for offset from yy til yy + m by 4
+		yoffset = y * dwidth + magic1
+		for offset from yoffset til yoffset + dwidth by 4
 			src = offset + 4 + magic2
-			if src >= 0 and offset < data.length then data[offset] = lerp data[offset], data[src]
+			if src >= 0 and src < len and offset >= 0 and offset < len
+				data[offset] = lerp data[offset], data[src]
 
 sliceoffset = !({data, width, height}, y0, y1, offset, chanmask=2b111, blend=0.2, drift=0) ->
 	return if not chanmask
@@ -139,16 +140,12 @@ displacement-mapper = !(context, displacement-map, scaleX, scaleY) ->
 			disX = (displacement-data[offset] - 127) / 128.0 * scaleX * disZ
 			disY = (displacement-data[offset + 1] - 127) / 128.0 * scaleY * disZ
 
-
 			sourceX = 0 | Math.round(x + disX)
 			sourceY = 0 | Math.round(y + disY)
 			sourceOffset = (zclamp(sourceY, height) * width * 4 + zclamp(sourceX, width) * 4)
 			d[offset++] = source-data[sourceOffset++]
 			d[offset++] = source-data[sourceOffset++]
 			d[offset++] = source-data[sourceOffset++]
-
-			if x == 64 and y == 64
-				console.log x, y, displacement-data[offset], displacement-data[offset + 1], disX, disY
 			
 	context.put-image-data dest-data, 0, 0
 
@@ -395,6 +392,19 @@ let
 
 	start = !->
 		draw!
+
+	window.benchmark-draws = !->
+		t0 = +new Date
+		n = 50
+		for x from 0 til n
+			draw!
+		t1 = +new Date
+		dur = (t1 - t0) / 1000
+		console.log "draws", n
+		console.log "duration", dur
+		console.log "fps", n / dur
+
+
 
 	scale = 2.3
 
