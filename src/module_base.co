@@ -1,0 +1,37 @@
+define "module_base", [], !->
+	modules = {}
+	settings = {}
+
+	Module = !(name, params, action) ->
+		modules[name] = {name, params, action}
+
+	addModulesToGUI = !(gui)->
+		for name, module in modules
+			folder = gui.add-folder name
+			ms = settings@[name]
+			for param of module.params
+				if param.type == "num" or param.type == "int"
+					ms[param.name] = param.value || 0
+					folder.add ms, param.name, param.min, param.max
+						if param.step then &step(that)
+					continue
+				if param.type == "bool"
+					ms[param.name] = !!(param.value || false)
+					folder.add ms, param.name
+					continue
+
+
+
+	Num = (name, options) -> {type: "num", name, min: 0, max: 1, step: null, value: 0} <<< (options || {})
+	Int = (name, options) -> {type: "int", name, min: 0, max: 1, step: 1, value: 0} <<< (options || {})
+	Bool = (name, options) -> {type: "bool", name, value: !!(options?value)}
+
+	return {
+		modules
+		settings
+		Module
+		Num
+		Bool
+		Int
+		addModulesToGUI
+	}

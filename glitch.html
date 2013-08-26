@@ -1,6 +1,10 @@
 <html>
 <body>
 <style>body{margin:0}</style>
-<script src="_all.js"></script>
+<script src="dat.gui.js"></script>
+<script src="require.js"></script>
+<script>
+require.config({baseUrl: "js"})(["glitch"], function(main){});
+</script>
 </body>
 </html>
