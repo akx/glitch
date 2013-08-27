@@ -1,0 +1,33 @@
+define "utils", [], !->
+	lerp = (a, b, alpha=0.5) -> b * alpha + a * (1 - alpha)
+	lerper-cache = {
+		_a: (a, b) -> a
+		_b: (a, b) -> b
+	}
+	lerper = (alpha) ->
+		if alpha <= 0 then return lerper-cache._a
+		if alpha >= 1 then return lerper-cache._b
+		key = 0 | (alpha * 100)
+		if lerper-cache[key] then return that
+		beta = 1 - alpha
+		return lerper-cache[key] = new Function("a", "b", "return b * #alpha + a * #beta")
+
+	zwrap = !(num, max) ->
+		num += max while num < 0
+		return num % max
+
+	zclamp = !(num, max) ->
+		return 0 if num < 0
+		return max if num >= max
+		return num
+
+
+	randint = (min, max) -> 0|(Math.random! * (max - min) + min)
+	birandint = (min, max) -> 0|(Math.random! * (max - min) + min) * (if Math.random! <= 0.5 then -1 else +1)
+	rand = (min=0, max=1) -> (Math.random! * (max - min) + min)
+
+	mmod = !(a, b) ->
+		if a < 0 then a += (1+0|(a/-b)) * b
+		return 0|(a % b)
+
+	return {lerper, lerp, zwrap, zclamp, birandint, randint, rand, mmod}
