@@ -1,5 +1,5 @@
 define("module_base", [], function(){
-  var modules, settings, Module, addModulesToGUI, Num, Int, Bool;
+  var modules, settings, Module, addModulesToGUI, Num, Int, Bool, init;
   modules = {};
   settings = {};
   Module = function(name, params, action){
@@ -60,6 +60,18 @@ define("module_base", [], function(){
       value: !!(options != null && options.value)
     };
   };
+  init = function(name){
+    var ref$, params, action, o, i$, len$, ref1$, value;
+    ref$ = modules[name], params = ref$.params, action = ref$.action;
+    o = function(context, data){
+      action(o, context, data);
+    };
+    for (i$ = 0, len$ = params.length; i$ < len$; ++i$) {
+      ref1$ = params[i$], name = ref1$.name, value = ref1$.value;
+      o[name] = value;
+    }
+    return o;
+  };
   return {
     modules: modules,
     settings: settings,
@@ -67,7 +79,8 @@ define("module_base", [], function(){
     Num: Num,
     Bool: Bool,
     Int: Int,
-    addModulesToGUI: addModulesToGUI
+    addModulesToGUI: addModulesToGUI,
+    init: init
   };
 });
 function import$(obj, src){

@@ -26,6 +26,14 @@ define "module_base", [], !->
 	Int = (name, options) -> {type: "int", name, min: 0, max: 1, step: 1, value: 0} <<< (options || {})
 	Bool = (name, options) -> {type: "bool", name, value: !!(options?value)}
 
+	init = !(name) ->
+		{params, action} = modules[name]
+		o = (!(context, data) ->
+			action(o, context, data)
+		)
+		for {name, value} of params => o[name] = value
+		return o
+
 	return {
 		modules
 		settings
@@ -34,4 +42,5 @@ define "module_base", [], !->
 		Bool
 		Int
 		addModulesToGUI
+		init
 	}

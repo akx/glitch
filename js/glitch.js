@@ -1,5 +1,5 @@
 define("glitch", ["module_base", "fx_modules"], function(mb, modules){
-  var settings, sizeChange, x0$, canvas, context, gui, x1$, fileInputDiv, x2$, fileInput, moduleOrder, perf, draw, wrapDraw, testDraw;
+  var settings, sizeChange, x0$, canvas, context, gui, x1$, fileInputDiv, x2$, fileInput, x3$, buttonInput, moduleOrder, perf, draw, wrapDraw, testDraw;
   settings = {
     width: 320,
     height: 240,
@@ -38,7 +38,7 @@ define("glitch", ["module_base", "fx_modules"], function(mb, modules){
   gui.add(settings, "pause");
   mb.addModulesToGUI(gui);
   x1$ = fileInputDiv = document.createElement("div");
-  x1$.innerHTML = "<h2>Choose custom image</h2>";
+  x1$.innerHTML = "<hr>Open image:";
   document.body.appendChild(x1$);
   x2$ = fileInput = document.createElement("input");
   x2$.type = "file";
@@ -59,6 +59,20 @@ define("glitch", ["module_base", "fx_modules"], function(mb, modules){
     fileReader.readAsDataURL(e.target.files[0]);
   }, false);
   fileInputDiv.appendChild(x2$);
+  x1$.appendChild(document.createElement("hr"));
+  x3$ = buttonInput = document.createElement("input");
+  x3$.type = "button";
+  x3$.value = "Save PNG";
+  x3$.addEventListener("click", function(e){
+    var x4$, link, x5$, event;
+    x4$ = link = document.createElement("a");
+    x4$.href = canvas.toDataURL();
+    x4$.download = "image-" + (+new Date()) + ".png";
+    x5$ = event = document.createEvent("MouseEvents");
+    x5$.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+    link.dispatchEvent(event);
+  }, false);
+  fileInputDiv.appendChild(x3$);
   moduleOrder = ['ycbcrPre', 'leaks', 'sliceglitch', 'noise', 'bitbang', 'bloom', 'ycbcrPost', 'tvsim'];
   perf = window.performance || {};
   perf.now = perf.now || perf.mozNow || perf.msNow || perf.oNow || perf.webkitNow || function(){

@@ -33,7 +33,8 @@ define "glitch", ["module_base", "fx_modules"], !(mb, modules)->
 	mb.addModulesToGUI(gui)
 
 	fileInputDiv = document.createElement "div"
-		&innerHTML = "<h2>Choose custom image</h2>"
+
+		&innerHTML = "<hr>Open image:"
 		document.body.appendChild(&)
 		fileInput = document.createElement "input"
 			& <<< {type: "file"}
@@ -49,6 +50,20 @@ define "glitch", ["module_base", "fx_modules"], !(mb, modules)->
 				fileReader.readAsDataURL(e.target.files[0])
 			), false)
 			fileInputDiv.appendChild &
+		&appendChild document.createElement "hr"
+		buttonInput = document.createElement "input"
+			& <<< {type: "button", value: "Save PNG"}
+			&addEventListener("click", (!(e)->
+				link = document.createElement("a")
+					&href = canvas.toDataURL()
+					&download = "image-#{+new Date()}.png"
+				event = document.createEvent("MouseEvents")
+					&initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+				link.dispatchEvent(event)
+			), false)
+			fileInputDiv.appendChild &
+
+
 
 	moduleOrder = <[ ycbcrPre leaks sliceglitch noise bitbang bloom ycbcrPost tvsim ]>
 
