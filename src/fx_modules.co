@@ -95,7 +95,7 @@ define "fx_modules", ["module_base", "utils", "contextfx", "datafx", "displace"]
 
 
 	mb.Module "slicerep", [
-		mb.Num "probability", {value: 1}
+		mb.Num "probability", {value: 0}
 		mb.Int "nMin", {min: 0, max: 32, value: 0}
 		mb.Int "nMax", {min: 0, max: 32, value: 5}
 		mb.Int "hMin", {min: 1, max: 128, value: 5}
@@ -103,6 +103,7 @@ define "fx_modules", ["module_base", "utils", "contextfx", "datafx", "displace"]
 		mb.Int "minRepeats", {min: 1, max: 128, value: 3}
 		mb.Int "maxRepeats", {min: 1, max: 128, value: 9}
 	], !(settings, context, data) ->
+		return if rand() > settings.probability
 		for x from 0 til randint(settings.nMin, settings.nMax)
 			h = randint(settings.hMin, settings.hMax)
 			r = randint(settings.minRepeats, settings.maxRepeats)

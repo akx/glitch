@@ -181,7 +181,7 @@ define("fx_modules", ["module_base", "utils", "contextfx", "datafx", "displace"]
   });
   mb.Module("slicerep", [
     mb.Num("probability", {
-      value: 1
+      value: 0
     }), mb.Int("nMin", {
       min: 0,
       max: 32,
@@ -209,6 +209,9 @@ define("fx_modules", ["module_base", "utils", "contextfx", "datafx", "displace"]
     })
   ], function(settings, context, data){
     var x, to$, h, r, y0;
+    if (rand() > settings.probability) {
+      return;
+    }
     for (x = 0, to$ = randint(settings.nMin, settings.nMax); x < to$; ++x) {
       h = randint(settings.hMin, settings.hMax);
       r = randint(settings.minRepeats, settings.maxRepeats);
