@@ -73,22 +73,25 @@ define("glitch", ["module_base", "fx_modules"], function(mb, modules){
     link.dispatchEvent(event);
   }, false);
   fileInputDiv.appendChild(x3$);
-  moduleOrder = ['ycbcrPre', 'leaks', 'sliceglitch', 'noise', 'bitbang', 'bloom', 'ycbcrPost', 'tvsim'];
+  moduleOrder = ['ycbcrPre', 'leaks', 'sliceglitch', 'noise', 'bitbang', 'slicerep', 'bloom', 'ycbcrPost', 'tvsim'];
   perf = window.performance || {};
   perf.now = perf.now || perf.mozNow || perf.msNow || perf.oNow || perf.webkitNow || function(){
     return new Date().getTime();
   };
   draw = function(){
-    var t, x, data, times, i$, ref$, len$, name, module, t0, moduleSettings, out, t1, y, len1$;
+    var t, x, y, data, times, i$, ref$, len$, name, module, t0, moduleSettings, out, t1, len1$;
     if (settings.mode == "image" && settings.image) {
       context.drawImage(settings.image, 0, 0, canvas.width, canvas.height);
     } else {
       context.fillStyle = '#346434';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = '#FFAA00';
       t = +new Date() / 1000.0;
       x = (t * 150) % canvas.width;
+      context.fillStyle = '#FFAA00';
       context.fillRect(x, 64, 115, 223);
+      y = (t * 150) % canvas.height;
+      context.fillStyle = '#00AAFF';
+      context.fillRect(canvas.width - x, y, 43, 221);
     }
     data = context.getImageData(0, 0, canvas.width, canvas.height);
     times = [];

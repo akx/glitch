@@ -179,6 +179,43 @@ define("fx_modules", ["module_base", "utils", "contextfx", "datafx", "displace"]
     };
     dfx.bitbang(data, bitbangSourceData, settings.offScale, settings.minStrideIn, settings.maxStrideIn, settings.minStrideOut, settings.maxStrideOut, settings.minFeedback, settings.maxFeedback, settings.minYDrift, settings.maxYDrift);
   });
+  mb.Module("slicerep", [
+    mb.Num("probability", {
+      value: 1
+    }), mb.Int("nMin", {
+      min: 0,
+      max: 32,
+      value: 0
+    }), mb.Int("nMax", {
+      min: 0,
+      max: 32,
+      value: 5
+    }), mb.Int("hMin", {
+      min: 1,
+      max: 128,
+      value: 5
+    }), mb.Int("hMax", {
+      min: 1,
+      max: 128,
+      value: 8
+    }), mb.Int("minRepeats", {
+      min: 1,
+      max: 128,
+      value: 3
+    }), mb.Int("maxRepeats", {
+      min: 1,
+      max: 128,
+      value: 9
+    })
+  ], function(settings, context, data){
+    var x, to$, h, r, y0;
+    for (x = 0, to$ = randint(settings.nMin, settings.nMax); x < to$; ++x) {
+      h = randint(settings.hMin, settings.hMax);
+      r = randint(settings.minRepeats, settings.maxRepeats);
+      y0 = randint(0, data.height - h);
+      dfx.slicerep(data, y0, h, r);
+    }
+  });
   mb.Module("bloom", [
     mb.Num("strength"), mb.Int("radius", {
       min: 0,

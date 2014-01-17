@@ -93,6 +93,23 @@ define "fx_modules", ["module_base", "utils", "contextfx", "datafx", "displace"]
 			settings.minYDrift,     settings.maxYDrift
 		)
 
+
+	mb.Module "slicerep", [
+		mb.Num "probability", {value: 1}
+		mb.Int "nMin", {min: 0, max: 32, value: 0}
+		mb.Int "nMax", {min: 0, max: 32, value: 5}
+		mb.Int "hMin", {min: 1, max: 128, value: 5}
+		mb.Int "hMax", {min: 1, max: 128, value: 8}
+		mb.Int "minRepeats", {min: 1, max: 128, value: 3}
+		mb.Int "maxRepeats", {min: 1, max: 128, value: 9}
+	], !(settings, context, data) ->
+		for x from 0 til randint(settings.nMin, settings.nMax)
+			h = randint(settings.hMin, settings.hMax)
+			r = randint(settings.minRepeats, settings.maxRepeats)
+			y0 = randint(0, data.height - h)
+			dfx.slicerep(data, y0, h, r)
+
+
 	mb.Module "bloom", [
 		mb.Num "strength"
 		mb.Int "radius", {min: 0, max: 10}

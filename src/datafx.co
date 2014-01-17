@@ -188,6 +188,21 @@ define "datafx", ["./utils"], (utils) ->
 
 		sourceBuf.set(destBuf)
 
+	slicerep = !(data, startY, sliceHeight, repeats) ->
+		{width, height} = data
+		offsetStart = startY * width * 4
+		sliceLength = sliceHeight * width * 4
+		sourceSlice = new Uint8ClampedArray(data.data.buffer, offsetStart, sliceLength)
+		writeOffset = offsetStart
+
+		for rep from 1 til repeats
+			writeOffset = offsetStart + sliceLength * rep
+			if writeOffset + sliceLength < data.data.length
+				data.data.set(sourceSlice, writeOffset)
+
+			#console.log writeOffset
+
+
 	return {
 		scanlines
 		leak
@@ -200,4 +215,5 @@ define "datafx", ["./utils"], (utils) ->
 		toYCbCr
 		tvscan
 		displacementMapper
+		slicerep
 	}

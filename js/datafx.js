@@ -1,5 +1,5 @@
 define("datafx", ["./utils"], function(utils){
-  var lerper, lerp, randint, birandint, zwrap, rand, mmod, zclamp, scanlines, leak, bitbang, sliceoffset, sliceglitch, noise, toYcbcrMatrix, fromYcbcrMatrix, matrixXform, toYCbCr, fromYCbCr, tvscan, displacementMapper;
+  var lerper, lerp, randint, birandint, zwrap, rand, mmod, zclamp, scanlines, leak, bitbang, sliceoffset, sliceglitch, noise, toYcbcrMatrix, fromYcbcrMatrix, matrixXform, toYCbCr, fromYCbCr, tvscan, displacementMapper, slicerep;
   lerper = utils.lerper, lerp = utils.lerp, randint = utils.randint, birandint = utils.birandint, zwrap = utils.zwrap, rand = utils.rand, mmod = utils.mmod, zclamp = utils.zclamp;
   scanlines = function(arg$, multiplier){
     var data, width, height, y, x, offset;
@@ -212,6 +212,20 @@ define("datafx", ["./utils"], function(utils){
     }
     sourceBuf.set(destBuf);
   };
+  slicerep = function(data, startY, sliceHeight, repeats){
+    var width, height, offsetStart, sliceLength, sourceSlice, writeOffset, rep;
+    width = data.width, height = data.height;
+    offsetStart = startY * width * 4;
+    sliceLength = sliceHeight * width * 4;
+    sourceSlice = new Uint8ClampedArray(data.data.buffer, offsetStart, sliceLength);
+    writeOffset = offsetStart;
+    for (rep = 1; rep < repeats; ++rep) {
+      writeOffset = offsetStart + sliceLength * rep;
+      if (writeOffset + sliceLength < data.data.length) {
+        data.data.set(sourceSlice, writeOffset);
+      }
+    }
+  };
   return {
     scanlines: scanlines,
     leak: leak,
@@ -223,6 +237,7 @@ define("datafx", ["./utils"], function(utils){
     fromYCbCr: fromYCbCr,
     toYCbCr: toYCbCr,
     tvscan: tvscan,
-    displacementMapper: displacementMapper
+    displacementMapper: displacementMapper,
+    slicerep: slicerep
   };
 });
