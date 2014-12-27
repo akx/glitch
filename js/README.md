@@ -1,1 +1,0 @@
-These files are overwritten by watch.bat/build.bat and should not be read by mortals.
